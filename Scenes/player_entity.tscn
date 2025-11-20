@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://ch431fnkk2wub"]
+
+[ext_resource type="Script" uid="uid://cl3igtuutbhvn" path="res://Scripts/player_entity.gd" id="1_ujqvm"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_ujqvm"]
+height = 1.9
+
+[node name="PlayerEntity" type="Node3D"]
+script = ExtResource("1_ujqvm")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("CapsuleMesh_ujqvm")

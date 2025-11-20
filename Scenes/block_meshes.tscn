@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3 uid="uid://c434jh2t1lvbd"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_35s2a"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_35s2a"]
+
+[node name="BlockMeshes" type="Node3D"]
+
+[node name="Block" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_35s2a")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="Block"]
+axis_lock_linear_x = true
+axis_lock_linear_y = true
+axis_lock_linear_z = true
+axis_lock_angular_x = true
+axis_lock_angular_y = true
+axis_lock_angular_z = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Block/StaticBody3D"]
+shape = SubResource("BoxShape3D_35s2a")

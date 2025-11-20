@@ -11,6 +11,7 @@ signal error
 var _stream: StreamPeerTCP = StreamPeerTCP.new()
 var _status: int = StreamPeerTCP.STATUS_NONE
 var packet : PackedByteArray;
+@onready var root = get_tree().current_scene
 
 @export var ip: String = "127.0.0.1"
 @export var port: int = 25565
@@ -62,9 +63,11 @@ enum Packet {
 	ENTITY_RELATIVE_POSITION_LOOK = 0x21,
 	ENTITY_POSITION_LOOK = 0x22,
 	ENTITY_HEALTH_ACTION = 0x26,
+	ENTITY_METADATA = 0x28,
 	PRE_CHUNK = 0x32,
 	CHUNK = 0x33,
 	BLOCK_CHANGE = 0x35,
+	EFFECT = 0x3D,
 	WINDOW_ITEMS = 0x68,
 	DISCONNET = 0xFF
 }
@@ -119,7 +122,8 @@ func WriteFloat(value: float) -> void:
 	buf.put_float(value)
 	buf.seek(0)
 	var bytes = buf.data_array
-	var val = (bytes[3] << 24) | (bytes[2] << 16) | (bytes[1] << 8) | bytes[0]
+	# interpret the float as a 32-bit int
+	var val = bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24)
 	WriteInteger(val)
 
 func WriteDouble(value: float) -> void:
@@ -196,7 +200,7 @@ func swap16(val: int) -> int:
 
 func ReadDouble() -> float:
 	WaitForBytes(8)
-	var val = swap64(_stream.get_64())
+	var val = _stream.get_64()
 	# reinterpret bits as double
 	var bytes = PackedByteArray([
 		(val >> 56) & 0xFF,
@@ -215,7 +219,7 @@ func ReadDouble() -> float:
 
 func ReadFloat() -> float:
 	WaitForBytes(4)
-	var val = swap32(_stream.get_32())
+	var val = _stream.get_32()
 	# reinterpret bits as float
 	var bytes = PackedByteArray([
 		(val >> 24) & 0xFF,
@@ -237,18 +241,11 @@ func ReadString16() -> String:
 		_stream.get_8();
 		text += char(_stream.get_u8());
 	return text
-	
-var tcp_thread: Thread;
 
 func _ready():
 	print("Connecting to %s:%d" % [ip, port])
 	_stream.connect_to_host(ip, port)
 	loginState = LoginState.HANDSHAKE;
-	tcp_thread = Thread.new()
-	tcp_thread.start(TcpLoop)
-	
-func _exit_tree():
-	tcp_thread.wait_to_finish()
 
 func EnsureConnection():
 	_stream.poll()
@@ -271,147 +268,155 @@ func EnsureConnection():
 				emit_signal("error")
 
 func _physics_process(_delta: float) -> void:
+	HandlePackets()
 	if (loginState != LoginState.ONLINE): return
 	WritePositionLook();
 	
-func TcpLoop():
-	while (loginState != LoginState.OFFLINE):
-		# Wait
-		var start = Time.get_ticks_usec()
-		while float(Time.get_ticks_usec() - start) / 1_000_000.0 < 1.0/20.0:
-			pass
-		
-		EnsureConnection();
-		if (_status != StreamPeerTCP.STATUS_CONNECTED): continue;
-		
-		while(_stream.get_available_bytes() > 0):
-			var packetId = ReadByte();
-			match(packetId):
-				Packet.KEEP_ALIVE:
-					pass
-				Packet.LOGIN: # Login
-					print("Got Login")
-					entityId = ReadInteger();
-					ReadString16()
-					worldSeed = ReadLong();
-					dimension = ReadByte();
-					loginState = LoginState.POSITION
-				Packet.HANDSHAKE: # Handshake
-					print("Got Handshake")
-					ReadString16()
-					loginState = LoginState.LOGIN
-				Packet.SPAWN_POINT:
-					print("Got Spawnpoint")
-					print(Vector3i(
-						ReadInteger(),
-						ReadInteger(),
-						ReadInteger()
-					))
-				Packet.TIME:
-					print("Got Time")
-					print(ReadLong())
-				Packet.WINDOW_ITEMS:
-					print("Got Window Items")
-					ReadByte()
-					var payloadSize = ReadShort()
-					for i in range(payloadSize):
-						var itemId = ReadShort()
-						if (itemId > -1):
-							ReadByte()
-							ReadShort()
-					print(payloadSize)
-				Packet.CHAT_MESSAGE:
-					var text = ReadString16();
-					print(text)
-					chat_lines.text = text
-				Packet.PLAYER_POSITION_LOOK:
-					print("Got Pos Look")
-					var pos = Vector3.ZERO;
-					var rot = Vector2.ZERO;
-					pos.x = ReadDouble()
-					pos.y = ReadDouble()
-					ReadDouble()
-					pos.z = ReadDouble()
-					rot.x = ReadFloat()
-					rot.y = ReadFloat()
-					ReadBoolean()
-					print(pos)
-					player.global_position = pos
-					camera_3d.rotation = Vector3(pos.x,pos.y,0)
-					if (loginState == LoginState.POSITION):
-						loginState = LoginState.ONLINE
-				Packet.PRE_CHUNK:
-					#print("Got Pre-Chunk")
+func HandlePackets():
+	# Wait
+	#var start = Time.get_ticks_usec()
+	#while float(Time.get_ticks_usec() - start) / 1_000_000.0 < 1.0/20.0:
+	#	pass
+	
+	EnsureConnection();
+	if (_status != StreamPeerTCP.STATUS_CONNECTED): return;
+	
+	while(_stream.get_available_bytes() > 0):
+		var packetId = ReadByte();
+		match(packetId):
+			Packet.KEEP_ALIVE:
+				pass
+			Packet.LOGIN: # Login
+				print("Got Login")
+				entityId = ReadInteger();
+				ReadString16()
+				worldSeed = ReadLong();
+				dimension = ReadByte();
+				loginState = LoginState.POSITION
+			Packet.HANDSHAKE: # Handshake
+				print("Got Handshake")
+				ReadString16()
+				loginState = LoginState.LOGIN
+			Packet.SPAWN_POINT:
+				print("Got Spawnpoint")
+				player.spawn = Vector3i(
+					ReadInteger(),
+					ReadInteger(),
 					ReadInteger()
-					ReadInteger()
-					ReadBoolean()
-				Packet.CHUNK:
-					#print("Got Chunk")
-					ReadInteger()
-					ReadShort()
-					ReadInteger()
-					ReadByte()
-					ReadByte()
-					ReadByte()
-					var chunkSize = ReadInteger()
-					WaitForBytes(chunkSize)
-					_stream.get_data(chunkSize)
-				Packet.SPAWN_PLAYER_ENTITY:
-					ReadInteger()
-					ReadString16()
-					ReadInteger()
-					ReadInteger()
-					ReadInteger()
-					ReadByte()
-					ReadByte()
-					ReadShort()
-				Packet.ENTITY_EQUIPMENT:
-					ReadInteger()
-					ReadShort()
-					ReadShort()
-					ReadShort()
-				Packet.ENTITY_POSITION_LOOK:
-					ReadInteger()
-					ReadInteger()
-					ReadInteger()
-					ReadInteger()
-					ReadByte()
-					ReadByte()
-				Packet.DESTROY_ENTITY:
-					ReadInteger()
-				Packet.ENTITY_RELATIVE_POSITION:
-					ReadInteger()
-					ReadByte()
-					ReadByte()
-					ReadByte()
-				Packet.ENTITY_LOOK:
-					ReadInteger()
-					ReadByte()
-					ReadByte()
-				Packet.ENTITY_RELATIVE_POSITION_LOOK:
-					ReadInteger()
-					ReadByte()
-					ReadByte()
-					ReadByte()
-					ReadByte()
-					ReadByte()
-				Packet.DISCONNET:
-					print("Disconnected by Server!")
-					loginState = LoginState.OFFLINE
-				_:
-					print("Unknown! (0x%X)" % packetId)
+				)
+				print(player.spawn)
+			Packet.TIME:
+				root.UpdateTime(ReadLong())
+			Packet.WINDOW_ITEMS:
+				print("Got Window Items")
+				ReadByte()
+				var payloadSize = ReadShort()
+				for i in range(payloadSize):
+					var itemId = ReadShort()
+					if (itemId > -1):
+						ReadByte()
+						ReadShort()
+				print(payloadSize)
+			Packet.CHAT_MESSAGE:
+				var text = ReadString16();
+				print(text)
+				chat_lines.text = text
+			Packet.PLAYER_POSITION_LOOK:
+				print("Got Pos Look")
+				var pos = Vector3.ZERO;
+				var rot = Vector2.ZERO;
+				pos.x = ReadDouble()
+				pos.y = ReadDouble()
+				ReadDouble()
+				pos.z = ReadDouble()
+				rot.x = ReadFloat()
+				rot.y = ReadFloat()
+				ReadBoolean()
+				player.global_position = pos
+				print(rot)
+				camera_3d.global_rotation_degrees.x = -rot.y
+				player.global_rotation_degrees.y = -rot.x
+				if (loginState == LoginState.POSITION):
+					loginState = LoginState.ONLINE
+			Packet.PRE_CHUNK:
+				#print("Got Pre-Chunk")
+				ReadInteger()
+				ReadInteger()
+				ReadBoolean()
+			Packet.CHUNK:
+				#print("Got Chunk")
+				var pos = Vector3i(ReadInteger(),ReadShort(),ReadInteger())
+				var areaSize = Vector3i(ReadByte()+1,ReadByte()+1,ReadByte()+1)
+				var chunkSize = ReadInteger()
+				WaitForBytes(chunkSize)
+				var arr: Array = _stream.get_data(chunkSize)
+				DecompressChunk(pos,areaSize,PackedByteArray(arr[1]))
+			Packet.SPAWN_PLAYER_ENTITY:
+				print("Spawn Player")
+				var eid = ReadInteger()
+				root.AddEntity(eid)
+				# Get info
+				var e = root.GetEntity(eid)
+				e.Init(eid,ReadString16());
+				e.BlockPosition(Vector3i(ReadInteger(),ReadInteger(),ReadInteger()))
+				e.Look(Vector2i(ReadByte(),ReadByte()))
+				ReadShort()
+			Packet.ENTITY_EQUIPMENT:
+				ReadInteger()
+				ReadShort()
+				ReadShort()
+				ReadShort()
+			Packet.ENTITY_POSITION_LOOK:
+				var e = root.GetEntity(ReadInteger())
+				e.Position(Vector3i(ReadInteger(),ReadInteger(),ReadInteger()))
+				e.Look(Vector2i(ReadByte(),ReadByte()))
+			Packet.DESTROY_ENTITY:
+				root.RemoveEntity(ReadInteger())
+			Packet.ENTITY_RELATIVE_POSITION:
+				var e = root.GetEntity(ReadInteger())
+				e.RelativePosition(Vector3i(ReadInteger(),ReadInteger(),ReadInteger()))
+			Packet.ENTITY_LOOK:
+				var e = root.GetEntity(ReadInteger())
+				e.Look(Vector2i(ReadByte(),ReadByte()))
+			Packet.ENTITY_RELATIVE_POSITION_LOOK:
+				var e = root.GetEntity(ReadInteger())
+				e.RelativePosition(Vector3i(ReadInteger(),ReadInteger(),ReadInteger()))
+				e.Look(Vector2i(ReadByte(),ReadByte()))
+			Packet.BLOCK_CHANGE:
+				var pos = Vector3i(ReadInteger(),ReadByte(),ReadInteger())
+				print(pos)
+				root.PlaceBlock(pos,ReadByte())
+				ReadByte()
+			Packet.PLAYER_ANIMATION:
+				ReadInteger()
+				ReadByte()
+			Packet.EFFECT:
+				ReadInteger()
+				var _pos = Vector3i(ReadInteger(),ReadByte(),ReadInteger())
+				ReadInteger()
+			Packet.ENTITY_METADATA:
+				ReadInteger()
+				var value = ReadByte();
+				while (value != 127):
+					value = ReadByte();
+					print(value)
+			Packet.DISCONNET:
+				print("Disconnected by Server!")
+				loginState = LoginState.OFFLINE
+			_:
+				print("Unknown! (0x%X)" % packetId)
 
-		match(loginState):
-			LoginState.HANDSHAKE:
-				WriteHandshake()
-				loginState = LoginState.HANDSHAKE_SENT
-			LoginState.LOGIN:
-				WriteLogin()
-				loginState = LoginState.LOGIN_SENT
+	match(loginState):
+		LoginState.HANDSHAKE:
+			WriteHandshake()
+			loginState = LoginState.HANDSHAKE_SENT
+		LoginState.LOGIN:
+			WriteLogin()
+			loginState = LoginState.LOGIN_SENT
 
 func WaitForBytes(bytes : int):
 	while(_stream.get_available_bytes() < bytes):
-		print(bytes)
+		#print(bytes)
 		_stream.poll()
 
 func WriteHandshake():
@@ -429,11 +434,24 @@ func WriteLogin():
 
 func WritePositionLook():
 	WriteByte(0x0D)
-	WriteDouble(-player.global_position.x)
+	WriteDouble(player.global_position.x)
 	WriteDouble(player.global_position.y)
 	WriteDouble(1.65)
-	WriteDouble(-player.global_position.z)
-	WriteFloat(-camera_3d.rotation_degrees.z)
-	WriteFloat(-camera_3d.rotation_degrees.x)
+	WriteDouble(player.global_position.z)
+	WriteFloat(180.0-player.global_rotation_degrees.y)
+	WriteFloat(-camera_3d.global_rotation_degrees.x)
 	WriteBoolean(1)
 	SendPacket()
+
+func PosToIndex(pos : Vector3i) -> int:
+	return pos.y + (pos.z*128) + (pos.x*16*128)
+
+func DecompressChunk(pos: Vector3i, size: Vector3i, data: PackedByteArray):
+	var expected_size = int((size.x * size.y * size.z) * 2.5)  # example if each block is 2 bytes
+	var decompressed = data.decompress_dynamic(expected_size, FileAccess.COMPRESSION_DEFLATE)
+	for x in range(size.x):
+		for z in range(size.z):
+			for y in range(size.y):
+				var off = Vector3i(x,y,z);
+				var flipped_off = Vector3i(x, y, z)
+				root.PlaceBlock(pos+flipped_off, decompressed[PosToIndex(off)])
