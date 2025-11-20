@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://cfc2rjq4i7dw"]
+
+[ext_resource type="Script" uid="uid://b61pu2l0p2tcn" path="res://Scripts/client.gd" id="1_de1uw"]
+
+[node name="Client" type="Node3D"]
+script = ExtResource("1_de1uw")
+username = "Notch"
+
+[node name="Camera3D" type="Camera3D" parent="."]
+current = true
