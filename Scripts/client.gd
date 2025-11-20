@@ -6,6 +6,7 @@ signal error
 
 @onready var player: Node3D = $Player
 @onready var camera_3d: Camera3D = $Player/Camera3D
+@onready var chat_lines: RichTextLabel = $Control/VBoxContainer/ChatLines
 
 var _stream: StreamPeerTCP = StreamPeerTCP.new()
 var _status: int = StreamPeerTCP.STATUS_NONE
@@ -271,16 +272,7 @@ func EnsureConnection():
 
 func _physics_process(_delta: float) -> void:
 	if (loginState != LoginState.ONLINE): return
-	WriteByte(0x0D)
-	WriteDouble(-player.global_position.x)
-	WriteDouble(player.global_position.y)
-	WriteDouble(1.65)
-	WriteDouble(-player.global_position.z)
-	WriteFloat(-camera_3d.rotation_degrees.z)
-	WriteFloat(-camera_3d.rotation_degrees.x)
-	WriteBoolean(1)
-	if (SendPacket()):
-		print("Sent position!")
+	WritePositionLook();
 	
 func TcpLoop():
 	while (loginState != LoginState.OFFLINE):
@@ -329,7 +321,9 @@ func TcpLoop():
 							ReadShort()
 					print(payloadSize)
 				Packet.CHAT_MESSAGE:
-					print(ReadString16())
+					var text = ReadString16();
+					print(text)
+					chat_lines.text = text
 				Packet.PLAYER_POSITION_LOOK:
 					print("Got Pos Look")
 					var pos = Vector3.ZERO;
@@ -410,13 +404,9 @@ func TcpLoop():
 		match(loginState):
 			LoginState.HANDSHAKE:
 				WriteHandshake()
-				if (SendPacket()):
-					print("Sent Handshake")
 				loginState = LoginState.HANDSHAKE_SENT
 			LoginState.LOGIN:
 				WriteLogin()
-				if (SendPacket()):
-					print("Sent Login")
 				loginState = LoginState.LOGIN_SENT
 
 func WaitForBytes(bytes : int):
@@ -427,6 +417,7 @@ func WaitForBytes(bytes : int):
 func WriteHandshake():
 	WriteByte(Packet.HANDSHAKE)
 	WriteString16(username)
+	SendPacket()
 
 func WriteLogin():
 	WriteByte(Packet.LOGIN)
@@ -434,3 +425,15 @@ func WriteLogin():
 	WriteString16(username);
 	WriteLong(0);
 	WriteByte(0);
+	SendPacket()
+
+func WritePositionLook():
+	WriteByte(0x0D)
+	WriteDouble(-player.global_position.x)
+	WriteDouble(player.global_position.y)
+	WriteDouble(1.65)
+	WriteDouble(-player.global_position.z)
+	WriteFloat(-camera_3d.rotation_degrees.z)
+	WriteFloat(-camera_3d.rotation_degrees.x)
+	WriteBoolean(1)
+	SendPacket()
