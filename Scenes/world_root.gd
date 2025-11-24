@@ -16,7 +16,9 @@ func AddEntity(entityId : int):
 	print("Entity added:", pe)
 
 func GetEntity(entityId : int):
-	return entities[entityId]
+	if (entities.has(entityId)):
+		return entities[entityId]
+	return null
 
 func RemoveEntity(entityId : int):
 	entities[entityId].queue_free()

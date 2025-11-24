@@ -1,6 +1,15 @@
-[gd_scene load_steps=3 format=3 uid="uid://c434jh2t1lvbd"]
+[gd_scene load_steps=6 format=3 uid="uid://c434jh2t1lvbd"]
+
+[ext_resource type="Shader" uid="uid://b602m7m14sw3i" path="res://Scenes/block.gdshader" id="1_nfevy"]
+[ext_resource type="Texture2D" uid="uid://d2n5tdkt4bxu2" path="res://Textures/terrain.png" id="2_u00wq"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_35s2a"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_u00wq"]
+render_priority = 0
+shader = ExtResource("1_nfevy")
+shader_parameter/tex = ExtResource("2_u00wq")
+shader_parameter/offset = Vector2(0, 0)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_35s2a"]
 
@@ -8,6 +17,7 @@
 
 [node name="Block" type="MeshInstance3D" parent="."]
 mesh = SubResource("BoxMesh_35s2a")
+surface_material_override/0 = SubResource("ShaderMaterial_u00wq")
 
 [node name="StaticBody3D" type="StaticBody3D" parent="Block"]
 axis_lock_linear_x = true
