@@ -1,7 +1,8 @@
 extends CharacterBody3D
 
-const SPEED = 4.317
-const JUMP = 80
+# Per Tick (1/20)
+const SPEED = 4.317*60
+const JUMP = 100
 const SENS = 0.004
 
 var focus : bool = false
@@ -55,10 +56,10 @@ func _physics_process(delta):
 	dir = dir.normalized()
 
 	if dir != Vector3.ZERO:
-		velocity.x = dir.x * SPEED
-		velocity.z = dir.z * SPEED
+		velocity.x = dir.x * SPEED * delta
+		velocity.z = dir.z * SPEED * delta
 	else:
-		velocity.x = move_toward(velocity.x, 0, SPEED)
-		velocity.z = move_toward(velocity.z, 0, SPEED)
+		velocity.x = move_toward(velocity.x, 0, SPEED * delta)
+		velocity.z = move_toward(velocity.z, 0, SPEED * delta)
 
 	move_and_slide()

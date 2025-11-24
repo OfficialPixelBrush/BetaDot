@@ -110,10 +110,7 @@ func ReadBoolean() -> bool:
 
 func ReadByte() -> int:
 	WaitForBytes(1)
-	var val = _stream.get_8()
-	# convert to signed 8-bit
-	if val & 0x80:
-		val -= 0x100
+	var val = _stream.get_u8()
 	return val
 
 func ReadShort() -> int:
@@ -135,9 +132,8 @@ func ReadInteger() -> int:
 func ReadLong() -> int:
 	WaitForBytes(8)
 	var val = swap64(_stream.get_64())
-	# convert to signed 64-bit
-	if val & 0x8000000000000000:
-		val -= 0x10000000000000000
+	# The sign is already in the right spot,
+	# so we don't need to do anything
 	return val
 
 func ReadFloat() -> float:

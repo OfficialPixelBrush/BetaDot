@@ -50,7 +50,6 @@ Jump={
 
 [physics]
 
-common/physics_ticks_per_second=20
 3d/default_gravity=16.0
 
 [rendering]

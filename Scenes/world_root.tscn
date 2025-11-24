@@ -16,6 +16,8 @@ sky_material = SubResource("ProceduralSkyMaterial_gk1fw")
 [sub_resource type="Environment" id="Environment_jvqgh"]
 background_mode = 2
 sky = SubResource("Sky_kwpjn")
+ambient_light_source = 3
+reflected_light_source = 2
 tonemap_mode = 2
 
 [sub_resource type="BoxMesh" id="BoxMesh_jvqgh"]
@@ -23,6 +25,8 @@ size = Vector3(16, 16, 16)
 
 [node name="WorldRoot" type="Node3D"]
 script = ExtResource("1_jvqgh")
+dayColor = Color(0.35276523, 0.5527526, 1, 1)
+sunsetColor = Color(0.99999994, 0.53395313, 0.27971947, 1)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_jvqgh")
@@ -38,3 +42,8 @@ metadata/_editor_floor_ = Vector3(0, 0, 0)
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 8, 8)
 mesh = SubResource("BoxMesh_jvqgh")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.9800672, -0.13851842, -0.14241175, 0.19866666, 0.6833422, 0.702549, -2.536571e-08, -0.7168375, 0.6972402, 207.96223, 81.65073, 0)
+shadow_enabled = true
+directional_shadow_mode = 1

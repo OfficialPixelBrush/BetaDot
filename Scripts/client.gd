@@ -112,9 +112,9 @@ func HandlePacket():
 				loginState = LoginState.ONLINE
 		Enum.Packet.PRE_CHUNK:
 			#print("Got Pre-Chunk")
-			net.ReadInteger()
-			net.ReadInteger()
-			net.ReadBoolean()
+			var cpos = Vector2i(net.ReadInteger(),net.ReadInteger())
+			if (!net.ReadBoolean()):
+				ClearChunk(cpos)
 		Enum.Packet.CHUNK:
 			#print("Got Chunk")
 			var pos = Vector3i(net.ReadInteger(),net.ReadShort(),net.ReadInteger())
@@ -248,9 +248,6 @@ func WritePositionLook():
 	net.WriteBoolean(1)
 	net.SendPacket()
 
-func PosToIndex(pos : Vector3i) -> int:
-	return pos.y + (pos.z*128) + (pos.x*16*128)
-
 func ReadMobMetadata(type : int):
 	print("Mob ID: " + str(type))
 	var value = net.ReadByte()
@@ -267,12 +264,42 @@ func ReadMobMetadata(type : int):
 				net.ReadByte()
 		value = net.ReadByte()
 
+func PosToIndex(pos : Vector3i) -> int:
+	return pos.y + (pos.z*128) + (pos.x*16*128)
+
+func CanCheck(pos : Vector3i) -> bool:
+	return pos.y >= 0 && pos.y < 128 && pos.x >= 0 && pos.x < 16 && pos.z >= 0 && pos.z < 16;
+
+func GetBlock(pos : Vector3i, data : PackedByteArray) -> int:
+	if (CanCheck(pos)):
+		return data[PosToIndex(pos)]
+	return 1;
+
+func IsSurrounded(pos : Vector3i, data : PackedByteArray) -> bool:
+	return (
+		GetBlock(pos + Vector3i(+0,+0,+1), data) > 0 &&
+		GetBlock(pos + Vector3i(+0,+1,+0), data) > 0 &&
+		GetBlock(pos + Vector3i(+1,+0,+0), data) > 0 &&
+		GetBlock(pos + Vector3i(+0,+0,-1), data) > 0 &&
+		GetBlock(pos + Vector3i(+0,-1,+0), data) > 0 &&
+		GetBlock(pos + Vector3i(-1,+0,+0), data) > 0
+	);
+
 func DecompressChunk(pos: Vector3i, size: Vector3i, data: PackedByteArray):
 	var expected_size = int((size.x * size.y * size.z) * 2.5)  # example if each block is 2 bytes
 	var decompressed = data.decompress_dynamic(expected_size, FileAccess.COMPRESSION_DEFLATE)
+	#cm.GenerateMesh(decompressed)
 	for x in range(size.x):
 		for z in range(size.z):
 			for y in range(size.y):
 				var off = Vector3i(x,y,z);
-				var flipped_off = Vector3i(x, y, z)
-				root.PlaceBlock(pos+flipped_off, decompressed[PosToIndex(off)])
+				if (!IsSurrounded(off,decompressed)):
+					root.PlaceBlock(pos+off, decompressed[PosToIndex(off)])
+
+func ClearChunk(cpos: Vector2i):
+	var pos = Vector3i(cpos.x*16,0,cpos.y*16)
+	for x in range(16):
+		for z in range(16):
+			for y in range(128):
+				var off = Vector3i(x,y,z);
+				root.PlaceBlock(pos+off, -1)
