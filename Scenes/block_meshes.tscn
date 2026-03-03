@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://c434jh2t1lvbd"]
+[gd_scene format=3 uid="uid://c434jh2t1lvbd"]
 
 [ext_resource type="Shader" uid="uid://b602m7m14sw3i" path="res://Scenes/block.gdshader" id="1_nfevy"]
 [ext_resource type="Texture2D" uid="uid://d2n5tdkt4bxu2" path="res://Textures/terrain.png" id="2_u00wq"]
@@ -13,13 +13,13 @@ shader_parameter/offset = Vector2(0, 0)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_35s2a"]
 
-[node name="BlockMeshes" type="Node3D"]
+[node name="BlockMeshes" type="Node3D" unique_id=283291002]
 
-[node name="Block" type="MeshInstance3D" parent="."]
+[node name="Block" type="MeshInstance3D" parent="." unique_id=1072902302]
 mesh = SubResource("BoxMesh_35s2a")
 surface_material_override/0 = SubResource("ShaderMaterial_u00wq")
 
-[node name="StaticBody3D" type="StaticBody3D" parent="Block"]
+[node name="StaticBody3D" type="StaticBody3D" parent="Block" unique_id=507612484]
 axis_lock_linear_x = true
 axis_lock_linear_y = true
 axis_lock_linear_z = true
@@ -27,5 +27,5 @@ axis_lock_angular_x = true
 axis_lock_angular_y = true
 axis_lock_angular_z = true
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Block/StaticBody3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Block/StaticBody3D" unique_id=1048283623]
 shape = SubResource("BoxShape3D_35s2a")

@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3 uid="uid://cfc2rjq4i7dw"]
+[gd_scene format=3 uid="uid://cfc2rjq4i7dw"]
 
 [ext_resource type="Script" uid="uid://b61pu2l0p2tcn" path="res://Scripts/client.gd" id="1_de1uw"]
 [ext_resource type="Script" uid="uid://clglu4ea5de3n" path="res://Scripts/player.gd" id="2_o4a6k"]
@@ -6,22 +6,22 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_de1uw"]
 size = Vector3(0.5, 1.8, 0.5)
 
-[node name="Client" type="Node3D"]
+[node name="Client" type="Node3D" unique_id=122293048]
 script = ExtResource("1_de1uw")
 username = "Notch"
 
-[node name="Player" type="CharacterBody3D" parent="."]
+[node name="Player" type="CharacterBody3D" parent="." unique_id=1399401798]
 script = ExtResource("2_o4a6k")
 
-[node name="Camera3D" type="Camera3D" parent="Player"]
+[node name="Camera3D" type="Camera3D" parent="Player" unique_id=1705068956]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
 current = true
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=1877978222]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("BoxShape3D_de1uw")
 
-[node name="Control" type="Control" parent="."]
+[node name="Control" type="Control" parent="." unique_id=1850133839]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -31,7 +31,7 @@ grow_vertical = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Control"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Control" unique_id=1182651401]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -40,7 +40,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 0
 
-[node name="ChatLines" type="RichTextLabel" parent="Control/VBoxContainer"]
+[node name="ChatLines" type="RichTextLabel" parent="Control/VBoxContainer" unique_id=1070192264]
 layout_mode = 2
 bbcode_enabled = true
 fit_content = true

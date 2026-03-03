@@ -53,6 +53,17 @@ func HandlePackets():
 			WriteLogin()
 			loginState = LoginState.LOGIN_SENT
 
+func sanitize_text(s: String) -> String:
+	var result := ""
+	for c in s:
+		var code := c.unicode_at(0)
+		
+		# Allow printable + newline + tab
+		if code >= 32 or code == 9 or code == 10:
+			result += c
+	
+	return result
+	
 func HandlePacket():
 	var packetId = net.ReadByte();
 	match(packetId):
@@ -64,7 +75,8 @@ func HandlePacket():
 			net.ReadString16()
 			worldSeed = net.ReadLong();
 			dimension = net.ReadByte();
-			loginState = LoginState.POSITION
+			loginState = LoginState.ONLINE
+			print("Logged in!")
 		Enum.Packet.HANDSHAKE: # Handshake
 			print("Got Handshake")
 			net.ReadString16()
@@ -79,22 +91,14 @@ func HandlePacket():
 			print(player.spawn)
 		Enum.Packet.TIME:
 			root.UpdateTime(net.ReadLong())
-		Enum.Packet.WINDOW_ITEMS:
-			print("Got Window Items")
-			net.ReadByte()
-			var payloadSize = net.ReadShort()
-			for i in range(payloadSize):
-				var itemId = net.ReadShort()
-				if (itemId > -1):
-					net.ReadByte()
-					net.ReadShort()
-			print(payloadSize)
 		Enum.Packet.CHAT_MESSAGE:
-			var text = net.ReadString16();
+			var text = sanitize_text(net.ReadString16());
 			print(text)
 			chat_lines.text = text
+		Enum.Packet.SET_HEALTH:
+			net.ReadShort()
 		Enum.Packet.PLAYER_POSITION_LOOK:
-			print("Got Pos Look")
+			#print("Got Pos Look")
 			var pos = Vector3.ZERO;
 			var rot = Vector2.ZERO;
 			pos.x = net.ReadDouble()
@@ -105,11 +109,9 @@ func HandlePacket():
 			rot.y = net.ReadFloat()
 			net.ReadBoolean()
 			player.global_position = pos
-			print(rot)
+			#print(rot)
 			camera_3d.global_rotation_degrees.x = -rot.y
 			player.global_rotation_degrees.y = -rot.x
-			if (loginState == LoginState.POSITION):
-				loginState = LoginState.ONLINE
 		Enum.Packet.PRE_CHUNK:
 			#print("Got Pre-Chunk")
 			var cpos = Vector2i(net.ReadInteger(),net.ReadInteger())
@@ -136,19 +138,20 @@ func HandlePacket():
 				e.Look(look)
 			net.ReadShort()
 		Enum.Packet.SPAWN_MOB_ENTITY:
-			print("Spawn Mob")
+			#print("Spawn Mob")
 			var eid = net.ReadInteger()
 			root.AddEntity(eid)
-			# Get info
 			var e = root.GetEntity(eid)
 			var type = net.ReadByte()
-			var pos = Vector3i(net.ReadInteger(),net.ReadInteger(),net.ReadInteger());
-			var look = Vector2i(net.ReadByte(),net.ReadByte());
-			ReadMobMetadata(type)
-			if (e):
-				e.InitMob(eid,type);
-				e.BlockPosition(pos/32)
+			var pos = Vector3i(net.ReadInteger(), net.ReadInteger(), net.ReadInteger())
+			var look = Vector2i(net.ReadByte(), net.ReadByte())
+			if e:
+				e.InitMob(eid, type)
+				e.BlockPosition(pos / 32)
 				e.Look(look)
+				ReadMobMetadata(e) # pass entity to metadata reader
+			else:
+				ReadMobMetadata(null) # still consume metadata even if entity missing
 		Enum.Packet.SPAWN_ITEM_ENTITY:
 			print("Spawn Item")
 			var eid = net.ReadInteger()
@@ -170,21 +173,29 @@ func HandlePacket():
 			net.ReadShort()
 		Enum.Packet.ENTITY_POSITION_LOOK:
 			var e = root.GetEntity(net.ReadInteger())
-			e.Position(Vector3i(net.ReadInteger(),net.ReadInteger(),net.ReadInteger()))
-			e.Look(Vector2i(net.ReadByte(),net.ReadByte()))
+			var pos = Vector3i(net.ReadInteger(),net.ReadInteger(),net.ReadInteger());
+			var look = Vector2i(net.ReadByte(),net.ReadByte());
+			if (e):
+				e.Position(pos)
+				e.Look(look)
+		Enum.Packet.ENTITY_HEALTH_ACTION:
+			var e = root.GetEntity(net.ReadInteger())
+			var action = net.ReadByte()
 		Enum.Packet.DESTROY_ENTITY:
 			root.RemoveEntity(net.ReadInteger())
 		Enum.Packet.ENTITY_RELATIVE_POSITION:
 			var e = root.GetEntity(net.ReadInteger())
-			var pos = Vector3i(net.ReadInteger(),net.ReadInteger(),net.ReadInteger());
-			if (e): e.RelativePosition(pos)
+			var pos = Vector3i(net.ReadByte(),net.ReadByte(),net.ReadByte());
+			if (e):
+				e.RelativePosition(pos)
 		Enum.Packet.ENTITY_LOOK:
 			var e = root.GetEntity(net.ReadInteger())
 			var look = Vector2i(net.ReadByte(),net.ReadByte());
-			if (e): e.Look(look)
+			if (e):
+				e.Look(look)
 		Enum.Packet.ENTITY_RELATIVE_POSITION_LOOK:
 			var e = root.GetEntity(net.ReadInteger())
-			var pos = Vector3i(net.ReadInteger(),net.ReadInteger(),net.ReadInteger());
+			var pos = Vector3i(net.ReadByte(),net.ReadByte(),net.ReadByte());
 			var look = Vector2i(net.ReadByte(),net.ReadByte());
 			if (e):
 				e.RelativePosition(pos)
@@ -196,7 +207,7 @@ func HandlePacket():
 				pass
 		Enum.Packet.BLOCK_CHANGE:
 			var pos = Vector3i(net.ReadInteger(),net.ReadByte(),net.ReadInteger())
-			print(pos)
+			#print(pos)
 			root.PlaceBlock(pos,net.ReadByte())
 			net.ReadByte()
 		Enum.Packet.PLAYER_ANIMATION:
@@ -206,23 +217,45 @@ func HandlePacket():
 			net.ReadInteger()
 			var _pos = Vector3i(net.ReadInteger(),net.ReadByte(),net.ReadInteger())
 			net.ReadInteger()
+		Enum.Packet.GAME_STATE:
+			net.ReadByte()
 		Enum.Packet.ENTITY_METADATA:
-			net.ReadInteger()
-			var value = net.ReadByte();
-			while (value != 127):
-				value = net.ReadByte();
-				print(value)
+			var entity_id = net.ReadInteger()
+			ReadMobMetadata()
 		Enum.Packet.SET_INVENTORY_SLOT:
+			#print("Set Inventory Slot")
 			net.ReadByte()
 			net.ReadShort()
-			net.ReadShort()
+			var itemId = net.ReadShort()
+			if (itemId > -1):
+				net.ReadByte()
+				net.ReadShort()
+		Enum.Packet.WINDOW_ITEMS:
+			#print("Got Window Items")
 			net.ReadByte()
+			var payloadSize = net.ReadShort()
+			for i in range(payloadSize):
+				var itemId = net.ReadShort()
+				if (itemId > -1):
+					net.ReadByte()
+					net.ReadShort()
+			#print(payloadSize)
+		Enum.Packet.SIGN:
+			net.ReadInteger()
 			net.ReadShort()
+			net.ReadInteger()
+			net.ReadString16()
+			net.ReadString16()
+			net.ReadString16()
+			net.ReadString16()
 		Enum.Packet.DISCONNET:
 			print("Disconnected by Server!")
+			print(net.ReadString16())
 			loginState = LoginState.OFFLINE
+			get_tree().quit()
 		_:
 			print("Unknown! (0x%X)" % packetId)
+			get_tree().quit()
 
 func WriteHandshake():
 	net.WriteByte(Enum.Packet.HANDSHAKE)
@@ -241,28 +274,44 @@ func WritePositionLook():
 	net.WriteByte(0x0D)
 	net.WriteDouble(player.global_position.x)
 	net.WriteDouble(player.global_position.y)
-	net.WriteDouble(1.65)
+	net.WriteDouble(player.global_position.y+1.6)
 	net.WriteDouble(player.global_position.z)
 	net.WriteFloat(180.0-player.global_rotation_degrees.y)
 	net.WriteFloat(-camera_3d.global_rotation_degrees.x)
 	net.WriteBoolean(1)
 	net.SendPacket()
 
-func ReadMobMetadata(type : int):
-	print("Mob ID: " + str(type))
-	var value = net.ReadByte()
-	while (value != 127):
-		match(type):
-			Enum.Mobs.CREEPER:
+func ReadMobMetadata(e = null):
+	while true:
+		var header = net.ReadByte()
+		if header == 0x7F:
+			break
+		var type = header >> 5
+		#print("Mob Type: " + str(type))
+		var _index = header & 0x1F
+		match type:
+			0: # byte
 				net.ReadByte()
-				net.ReadByte()
-			Enum.Mobs.WOLF:
-				net.ReadByte()
+			1: # short
+				net.ReadShort()
+			2: # int
+				net.ReadInteger()
+			3: # float
+				net.ReadFloat()
+			4: # string16
 				net.ReadString16()
+			5: # slot
+				var item_id = net.ReadShort()
+				if item_id != -1:
+					net.ReadByte()
+					net.ReadShort()
+			6: # 3 ints
+				net.ReadInteger()
+				net.ReadInteger()
 				net.ReadInteger()
 			_:
-				net.ReadByte()
-		value = net.ReadByte()
+				print("Unknown metadata type:", type)
+				return
 
 func PosToIndex(pos : Vector3i) -> int:
 	return pos.y + (pos.z*128) + (pos.x*16*128)
@@ -271,8 +320,9 @@ func CanCheck(pos : Vector3i) -> bool:
 	return pos.y >= 0 && pos.y < 128 && pos.x >= 0 && pos.x < 16 && pos.z >= 0 && pos.z < 16;
 
 func GetBlock(pos : Vector3i, data : PackedByteArray) -> int:
-	if (CanCheck(pos)):
-		return data[PosToIndex(pos)]
+	var index = PosToIndex(pos);
+	if (CanCheck(pos) && index < data.size()):
+		return data[index]
 	return 1;
 
 func IsSurrounded(pos : Vector3i, data : PackedByteArray) -> bool:

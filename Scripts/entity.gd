@@ -4,9 +4,6 @@ var entityId = 0;
 var username = "";
 var mobId = 0;
 
-func _ready() -> void:
-	print("Ready!")
-
 func InitPlayer(eid : int, usr : String):
 	entityId = eid;
 	username = usr;
@@ -17,8 +14,8 @@ func InitMob(eid : int, mob : int):
 
 func BlockPosition(pos: Vector3i):
 	self.position = pos;
-	print(self.position)
-	print(pos)
+	#print(self.position)
+	#print(pos)
 	
 func Position(pos: Vector3i):
 	self.position = Vector3(pos)/32.0

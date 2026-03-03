@@ -197,13 +197,13 @@ func ReadChunkData(chunkSize : int) -> PackedByteArray:
 # --- Byte-Endianess Changers ---
 func swap64(val: int) -> int:
 	return ((val >> 56) & 0xFF) | \
-		   ((val >> 40) & 0xFF00) | \
-		   ((val >> 24) & 0xFF0000) | \
-		   ((val >> 8)  & 0xFF000000) | \
-		   ((val << 8)  & 0xFF00000000) | \
-		   ((val << 24) & 0xFF0000000000) | \
-		   ((val << 40) & 0xFF000000000000) | \
-		   ((val << 56) & 0xFF00000000000000)
+		   ((val >> 40) & (0xFF << 8)) | \
+		   ((val >> 24) & (0xFF << 16)) | \
+		   ((val >> 8)  & (0xFF << 24)) | \
+		   ((val << 8)  & (0xFF << 32)) | \
+		   ((val << 24) & (0xFF << 40)) | \
+		   ((val << 40) & (0xFF << 48)) | \
+		   ((val << 56) & (0xFF << 56))
 
 func swap32(val: int) -> int:
 	return ((val >> 24) & 0xFF) | \
