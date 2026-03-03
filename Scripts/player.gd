@@ -2,7 +2,7 @@ extends CharacterBody3D
 
 # Per Tick (1/20)
 const SPEED = 4.317*60
-const JUMP = 100
+const JUMP = 400
 const SENS = 0.004
 
 var focus : bool = false

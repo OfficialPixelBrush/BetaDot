@@ -16,8 +16,21 @@ sky_material = SubResource("ProceduralSkyMaterial_gk1fw")
 background_mode = 2
 sky = SubResource("Sky_kwpjn")
 ambient_light_source = 3
+ambient_light_sky_contribution = 0.41
 reflected_light_source = 2
-tonemap_mode = 2
+tonemap_mode = 1
+ssao_enabled = true
+ssao_radius = 7.19
+ssao_intensity = 16.0
+fog_mode = 1
+fog_light_color = Color(0.70576644, 0.85666555, 0.9791098, 1)
+fog_light_energy = 15.99
+fog_sun_scatter = 0.53
+fog_density = 0.095
+fog_aerial_perspective = 1.0
+volumetric_fog_density = 0.6259
+volumetric_fog_emission_energy = 7.5
+volumetric_fog_ambient_inject = 4.15
 
 [node name="WorldRoot" type="Node3D" unique_id=717806810]
 script = ExtResource("1_jvqgh")
@@ -29,6 +42,7 @@ nightColor = Color(0.27501786, 0.2652255, 0.5410092, 1)
 environment = SubResource("Environment_jvqgh")
 
 [node name="Client" parent="." unique_id=185208340 instance=ExtResource("1_gk1fw")]
+ip = "20.19.33.224"
 username = "PixelBrushArt"
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=2089904004]

@@ -3,9 +3,14 @@
 [ext_resource type="Texture2D" uid="uid://d2n5tdkt4bxu2" path="res://Textures/terrain.png" id="1_cbqk5"]
 
 [resource]
-transparency = 1
-shading_mode = 0
+transparency = 2
+alpha_scissor_threshold = 0.503
+alpha_antialiasing_mode = 2
+alpha_antialiasing_edge = 0.3
+shading_mode = 2
 specular_mode = 2
-disable_ambient_light = true
+disable_specular_occlusion = true
+vertex_color_use_as_albedo = true
 albedo_texture = ExtResource("1_cbqk5")
-texture_filter = 2
+metallic_specular = 0.0
+texture_filter = 0

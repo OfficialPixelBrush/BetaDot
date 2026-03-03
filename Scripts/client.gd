@@ -37,6 +37,7 @@ func _physics_process(_delta: float) -> void:
 	HandlePackets()
 	if (loginState != LoginState.ONLINE): return
 	WritePositionLook();
+	_process_chunk_queue()
 	
 func HandlePackets():	
 	net.EnsureConnection();
@@ -124,6 +125,15 @@ func HandlePacket():
 			var areaSize = Vector3i(net.ReadByte()+1,net.ReadByte()+1,net.ReadByte()+1)
 			var chunkData = net.ReadChunkData(net.ReadInteger())
 			DecompressChunk(pos,areaSize,chunkData)
+		Enum.Packet.MULTI_BLOCK_CHANGE:
+			net.ReadInteger(); net.ReadInteger()
+			var size = net.ReadShort()
+			for i in range(size):
+				net.ReadShort()
+			for i in range(size):
+				net.ReadByte()
+			for i in range(size):
+				net.ReadByte()
 		Enum.Packet.SPAWN_PLAYER_ENTITY:
 			print("Spawn Player")
 			var eid = net.ReadInteger()
@@ -148,7 +158,7 @@ func HandlePacket():
 			var look = Vector2i(net.ReadByte(), net.ReadByte())
 			if e:
 				e.InitMob(eid, type)
-				e.BlockPosition(pos / 32)
+				e.BlockPosition(pos)
 				e.Look(look)
 				ReadMobMetadata(e) # pass entity to metadata reader
 			else:
@@ -209,7 +219,8 @@ func HandlePacket():
 		Enum.Packet.BLOCK_CHANGE:
 			var pos = Vector3i(net.ReadInteger(),net.ReadByte(),net.ReadInteger())
 			#print(pos)
-			root.PlaceBlock(pos,net.ReadByte())
+			net.ReadByte()
+			#root.PlaceBlock(pos,net.ReadByte())
 			net.ReadByte()
 		Enum.Packet.PLAYER_ANIMATION:
 			net.ReadInteger()
@@ -317,22 +328,60 @@ func ReadMobMetadata(e = null):
 var chunks: Dictionary = {}  # Vector3i -> MeshInstance3D
 var chunk_scene: PackedScene  # preload your MeshInstance3D scene
 
+const MAX_CHUNKS_PER_FRAME := 2      # how many chunks to kick off building per frame
+const MAX_CONCURRENT_BUILDS := 4     # max threads building at once
+
+var _chunk_queue: Array = []          # Array of {pos, size, data}
+var _active_builds: int = 0
+
+func _process_chunk_queue() -> void:
+	if _chunk_queue.is_empty(): return
+	if _active_builds >= MAX_CONCURRENT_BUILDS: return
+
+	# Sort by distance to player (closest first)
+	var player_pos = player.global_position
+	_chunk_queue.sort_custom(func(a, b):
+		var da = Vector3(a.pos).distance_squared_to(player_pos)
+		var db = Vector3(b.pos).distance_squared_to(player_pos)
+		return da < db
+	)
+
+	var kicked := 0
+	while kicked < MAX_CHUNKS_PER_FRAME and _active_builds < MAX_CONCURRENT_BUILDS and not _chunk_queue.is_empty():
+		var entry = _chunk_queue.pop_front()
+		_start_chunk_build(entry.pos, entry.size, entry.data)
+		kicked += 1
+		
 func DecompressChunk(pos: Vector3i, size: Vector3i, data: PackedByteArray) -> void:
 	var expected_size = (size.x * size.y * size.z * 2.5)
 	var decompressed = data.decompress_dynamic(expected_size, FileAccess.COMPRESSION_DEFLATE)
 	
-	# Get or create chunk instance
+	# Queue it instead of building immediately
+	# Remove any existing queued entry for this pos (server resent it)
+	_chunk_queue = _chunk_queue.filter(func(e): return e.pos != pos)
+
+	_chunk_queue.append({ "pos": pos, "size": size, "data": decompressed })
+
+func _start_chunk_build(pos: Vector3i, size: Vector3i, data: PackedByteArray) -> void:
 	var chunk: MeshInstance3D
 	if chunks.has(pos):
 		chunk = chunks[pos]
+		# Disconnect old signal if reconnecting
+		if chunk.chunk_built.is_connected(_on_chunk_built):
+			chunk.chunk_built.disconnect(_on_chunk_built)
 	else:
 		chunk = preload("res://Scenes/chunk.tscn").instantiate()
 		get_tree().current_scene.add_child(chunk)
-		chunk.position = pos  # world position
+		chunk.position = pos
 		chunks[pos] = chunk
-	
-	chunk.generate_chunk_async(size, decompressed)
 
+	chunk.chunk_built.connect(_on_chunk_built, CONNECT_ONE_SHOT)
+	_active_builds += 1
+	chunk.generate_chunk_async(size, data)
+
+func _on_chunk_built() -> void:
+	_active_builds -= 1
+	
 func RemoveChunk(pos: Vector3i) -> void:
 	if chunks.has(pos):
 		chunks[pos].queue_free()
