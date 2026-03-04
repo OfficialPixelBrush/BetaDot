@@ -1,0 +1,49 @@
+[gd_scene format=3 uid="uid://b742wi112tn02"]
+
+[ext_resource type="Shader" uid="uid://b41it1fgc3qbn" path="res://menu_background.gdshader" id="1_48xlc"]
+[ext_resource type="Texture2D" uid="uid://d2n5tdkt4bxu2" path="res://Textures/terrain.png" id="2_1ehe0"]
+[ext_resource type="Theme" uid="uid://2cfp4i5gebcy" path="res://Gui/minecraft_theme.tres" id="6_opfnp"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ce3w2"]
+shader = ExtResource("1_48xlc")
+
+[node name="Menu" type="Control" unique_id=2114037405]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TextureRect" type="TextureRect" parent="." unique_id=1315744056]
+texture_filter = 1
+texture_repeat = 2
+material = SubResource("ShaderMaterial_ce3w2")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_1ehe0")
+stretch_mode = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1793930580]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer" unique_id=1031788572]
+layout_mode = 2
+size_flags_horizontal = 6
+theme = ExtResource("6_opfnp")
+alignment = 1
+
+[node name="Button" type="Button" parent="HBoxContainer/VBoxContainer" unique_id=41474502]
+layout_mode = 2
+theme = ExtResource("6_opfnp")
+text = "Join Server"
