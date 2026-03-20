@@ -108,6 +108,11 @@ func WriteString16(v: String):
 func ReadBoolean() -> bool:
 	return ReadByte() > 0;
 
+func ReadSignedByte() -> int:
+	WaitForBytes(1)
+	var val = _stream.get_8()
+	return val
+
 func ReadByte() -> int:
 	WaitForBytes(1)
 	var val = _stream.get_u8()

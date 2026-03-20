@@ -144,6 +144,15 @@ func HandlePacket():
 				e.BlockPosition(pos)
 				e.Look(look)
 			net.ReadShort()
+		Enum.Packet.SPAWN_OBJECT_ENTITY:
+			var eid = net.ReadInteger()
+			root.AddEntity(eid)
+			var e = root.GetEntity(eid)
+			var type = net.ReadByte()
+			var pos = Vector3i(net.ReadInteger(), net.ReadInteger(), net.ReadInteger())
+			if (e):
+				e.InitObject(eid, type)
+				e.Position(pos)
 		Enum.Packet.SPAWN_MOB_ENTITY:
 			#print("Spawn Mob")
 			var eid = net.ReadInteger()
@@ -154,7 +163,7 @@ func HandlePacket():
 			var look = Vector2i(net.ReadByte(), net.ReadByte())
 			if e:
 				e.InitMob(eid, type)
-				e.BlockPosition(pos)
+				e.Position(pos)
 				e.Look(look)
 				ReadMobMetadata(e) # pass entity to metadata reader
 			else:
@@ -171,7 +180,7 @@ func HandlePacket():
 			var pos = Vector3i(net.ReadInteger(),net.ReadInteger(),net.ReadInteger());
 			var rot = Vector3i(net.ReadByte(),net.ReadByte(),net.ReadByte());
 			if (e):
-				e.BlockPosition(pos);
+				e.Position(pos);
 				e.Rotation(rot);
 		Enum.Packet.ENTITY_EQUIPMENT:
 			net.ReadInteger()
@@ -192,17 +201,17 @@ func HandlePacket():
 			root.RemoveEntity(net.ReadInteger())
 		Enum.Packet.ENTITY_RELATIVE_POSITION:
 			var e = root.GetEntity(net.ReadInteger())
-			var pos = Vector3i(net.ReadByte(),net.ReadByte(),net.ReadByte());
+			var pos = Vector3i(net.ReadSignedByte(),net.ReadSignedByte(),net.ReadSignedByte());
 			if (e):
 				e.RelativePosition(pos)
 		Enum.Packet.ENTITY_LOOK:
 			var e = root.GetEntity(net.ReadInteger())
-			var look = Vector2i(net.ReadByte(),net.ReadByte());
+			var look = Vector2i(net.ReadSignedByte(),net.ReadSignedByte());
 			if (e):
 				e.Look(look)
 		Enum.Packet.ENTITY_RELATIVE_POSITION_LOOK:
 			var e = root.GetEntity(net.ReadInteger())
-			var pos = Vector3i(net.ReadByte(),net.ReadByte(),net.ReadByte());
+			var pos = Vector3i(net.ReadSignedByte(),net.ReadSignedByte(),net.ReadSignedByte());
 			var look = Vector2i(net.ReadByte(),net.ReadByte());
 			if (e):
 				e.RelativePosition(pos)
